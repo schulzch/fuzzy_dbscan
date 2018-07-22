@@ -1,9 +1,12 @@
 extern crate fuzzy_dbscan;
 extern crate rand;
+extern crate svg;
 
-use fuzzy_dbscan::FuzzyDBSCAN;
+use fuzzy_dbscan::{Category, Cluster, FuzzyDBSCAN};
 use rand::{Rng, SeedableRng, StdRng};
 use std::f32;
+use svg::node::element::Circle;
+use svg::Document;
 
 #[derive(Clone)]
 struct Point {
@@ -38,6 +41,66 @@ fn default_points() -> Vec<Point> {
     ].concat()
 }
 
+fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
+    let (min_x, min_y, max_x, max_y) = points.iter().cloned().fold(
+        (f32::MAX, f32::MAX, f32::MIN, f32::MIN),
+        |extrema, point| {
+            (
+                extrema.0.min(point.x),
+                extrema.1.min(point.y),
+                extrema.2.max(point.x),
+                extrema.3.max(point.y),
+            )
+        },
+    );
+    let margin = 5.0;
+    let mut doc = Document::new().set(
+        "viewBox",
+        (
+            min_x - margin,
+            min_y - margin,
+            (max_x - min_x) + 2.0 * margin,
+            (max_y - min_y) + 2.0 * margin,
+        ),
+    );
+    let colors = [
+        // ColorBrewer 12-class paired.
+        "#a6cee3",
+        "#1f78b4",
+        "#b2df8a",
+        "#33a02c",
+        "#fb9a99",
+        "#e31a1c",
+        "#fdbf6f",
+        "#ff7f00",
+        "#cab2d6",
+        "#6a3d9a",
+        "#ffff99",
+        "#b15928",
+    ];
+    for (cluster_index, cluster) in clusters.iter().enumerate() {
+        for assignment in cluster {
+            let point = &points[assignment.index];
+            let color = if let Category::Noise = assignment.category {
+                "#000000"
+            } else {
+                colors[cluster_index % 12]
+            };
+            let circle = Circle::new()
+                .set("fill", color)
+                .set("fill-opacity", assignment.label / 5.0 * 4.0 + 0.2)
+                .set("r", 1)
+                .set("cx", point.x)
+                .set("cy", point.y);
+
+            doc = doc.add(circle);
+        }
+    }
+    println!("{:?}", clusters);
+
+    svg::save(format!("target/_{}.svg", name), &doc).expect("Writing SVG failed");
+}
+
 // FuzzyDBSCAN should reduce to classic DBSCAN (eps_min = eps_max, pts_min = pts_max, hard).
 #[test]
 fn reduce_to_classic() {
@@ -50,6 +113,7 @@ fn reduce_to_classic() {
         pts_max: 50.0,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("reduce_to_classic", &points, &clusters);
     assert_eq!(clusters.len(), 2);
 }
 
@@ -65,6 +129,7 @@ fn reduce_to_fuzzy_border() {
         pts_max: 50.0,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("reduce_to_fuzzy_border", &points, &clusters);
     assert_eq!(clusters.len(), 2);
 }
 
@@ -80,6 +145,7 @@ fn reduce_to_fuzzy_core() {
         pts_max: 100.0,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("reduce_to_fuzzy_core", &points, &clusters);
     assert_eq!(clusters.len(), 2);
 }
 
@@ -98,6 +164,7 @@ fn find_fuzzy_cores() {
         pts_max: 70.0,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("find_fuzzy_cores", &points, &clusters);
     assert_eq!(clusters.len(), 2);
 }
 
@@ -116,6 +183,7 @@ fn find_fuzzy_borders() {
         pts_max: 50.0,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("find_fuzzy_borders", &points, &clusters);
     assert_eq!(clusters.len(), 2);
 }
 
@@ -135,5 +203,6 @@ fn find_fuzzy_cores_and_borders() {
         pts_max: 10.0,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("find_fuzzy_cores_and_borders", &points, &clusters);
     assert_eq!(clusters.len(), 7);
 }
