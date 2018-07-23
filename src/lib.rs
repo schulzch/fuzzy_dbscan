@@ -34,7 +34,7 @@
 //!     println!("{:?}", fuzzy_dbscan.cluster(&points));
 //! }
 //! ```
-use std::collections::VecDeque;
+use std::collections::HashSet;
 use std::f32;
 
 /// A high-level classification, as defined by the FuzzyDBSCAN algorithm.
@@ -73,6 +73,19 @@ pub struct FuzzyDBSCAN<'a, P: 'a> {
     pub pts_max: f32,
     /// The metric used to determine distances between points.
     pub distance_fn: &'a Fn(&P, &P) -> f32,
+}
+
+fn take_arbitrary(set: &mut HashSet<usize>) -> Option<usize> {
+    let value_copy = if let Some(value) = set.iter().next() {
+        Some(value.clone())
+    } else {
+        None
+    };
+    if let Some(value) = value_copy {
+        set.take(&value)
+    } else {
+        None
+    }
 }
 
 impl<'a, P> FuzzyDBSCAN<'a, P> {
@@ -114,7 +127,7 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
         &self,
         point_label: f32,
         point_index: usize,
-        mut neighbor_indices: VecDeque<usize>,
+        mut neighbor_indices: HashSet<usize>,
         points: &[P],
         visited: &mut [bool],
     ) -> Vec<Assignment> {
@@ -124,17 +137,18 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
             label: point_label,
         }];
         let mut border_points = Vec::new();
-        while let Some(neighbor_index) = neighbor_indices.pop_front() {
-            if visited[neighbor_index] {
-                continue;
-            }
+        let mut neighbor_visited = vec![false; points.len()];
+        while let Some(neighbor_index) = take_arbitrary(&mut neighbor_indices) {
+            neighbor_visited[neighbor_index] = true;
             visited[neighbor_index] = true;
             let neighbor_neighbor_indices = self.region_query(points, neighbor_index);
             let neighbor_label =
                 self.mu_min_p(self.density(neighbor_index, &neighbor_neighbor_indices, points));
             if neighbor_label > 0.0 {
                 for neighbor_neighbor_index in neighbor_neighbor_indices {
-                    neighbor_indices.push_back(neighbor_neighbor_index);
+                    if !neighbor_visited[neighbor_neighbor_index] {
+                        neighbor_indices.insert(neighbor_neighbor_index);
+                    }
                 }
                 cluster.push(Assignment {
                     index: neighbor_index,
@@ -163,19 +177,19 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
         cluster
     }
 
-    fn region_query(&self, points: &[P], point_index: usize) -> VecDeque<usize> {
+    fn region_query(&self, points: &[P], point_index: usize) -> HashSet<usize> {
         points
             .iter()
             .enumerate()
-            .filter(|(neighbour_index, neighbor_point)| {
-                *neighbour_index != point_index
+            .filter(|(neighbor_index, neighbor_point)| {
+                *neighbor_index != point_index
                     && self.distance(neighbor_point, &points[point_index]) <= self.eps_max
             })
-            .map(|(neighbour_index, _)| neighbour_index)
+            .map(|(neighbor_index, _)| neighbor_index)
             .collect()
     }
 
-    fn density(&self, point_index: usize, neighbor_indices: &VecDeque<usize>, points: &[P]) -> f32 {
+    fn density(&self, point_index: usize, neighbor_indices: &HashSet<usize>, points: &[P]) -> f32 {
         neighbor_indices.iter().fold(0.0, |sum, &neighbor_index| {
             sum + self.mu_distance(&points[point_index], &points[neighbor_index])
         })
