@@ -5,7 +5,8 @@ extern crate svg;
 use fuzzy_dbscan::{Category, Cluster, FuzzyDBSCAN};
 use rand::{Rng, SeedableRng, StdRng};
 use std::f32;
-use svg::node::element::Circle;
+use svg::node::element::{Circle, Definitions, RadialGradient, Stop, Title};
+use svg::node::Text;
 use svg::Document;
 
 #[derive(Clone)]
@@ -34,10 +35,10 @@ fn uniform_circle(n: usize, cx: f32, cy: f32, r: f32) -> Vec<Point> {
     return points;
 }
 
-fn default_points() -> Vec<Point> {
+fn equal_sized_circles() -> Vec<Point> {
     [
-        &uniform_circle(100, 1.0, 1.0, 10.0)[..],
-        &uniform_circle(100, 100.0, 100.0, 10.0)[..],
+        &uniform_circle(100, 0.0, 0.0, 10.0)[..],
+        &uniform_circle(100, 50.0, 0.0, 10.0)[..],
     ].concat()
 }
 
@@ -64,79 +65,65 @@ fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
         ),
     );
     let colors = [
-        // ColorBrewer 12-class paired.
-        "#a6cee3",
-        "#1f78b4",
-        "#b2df8a",
-        "#33a02c",
-        "#fb9a99",
-        "#e31a1c",
-        "#fdbf6f",
+        // Black.
+        "#000000",
+        // ColorBrewer Set1.
+        "#e41a1c",
+        "#377eb8",
+        "#4daf4a",
+        "#984ea3",
         "#ff7f00",
-        "#cab2d6",
-        "#6a3d9a",
-        "#ffff99",
-        "#b15928",
+        "#a65628",
+        "#f781bf",
     ];
+    let mut defs = Definitions::new();
+    for (color_index, color) in colors.iter().enumerate() {
+        let stop = |x: f32, y: f32| {
+            Stop::new()
+                .set("offset", format!("{}%", (x * 100.0).round()))
+                .set("stop-opacity", y)
+                .set("stop-color", color.to_string())
+        };
+        // Approximate Guassian gradient for more pleasant perception.
+        let gradient = RadialGradient::new()
+            .set("id", format!("g{}", color_index))
+            .add(stop(0.0, 1.0))
+            .add(stop(0.375, 0.375))
+            .add(stop(0.625, 0.0625))
+            .add(stop(1.0, 0.0));
+        defs = defs.add(gradient);
+    }
+    doc = doc.add(defs);
     for (cluster_index, cluster) in clusters.iter().enumerate() {
         for assignment in cluster {
             let point = &points[assignment.index];
-            let color = if let Category::Noise = assignment.category {
-                "#000000"
+            let color_index = if let Category::Noise = assignment.category {
+                0
             } else {
-                colors[cluster_index % 12]
+                1 + cluster_index % (colors.len() - 1)
             };
+            let text = format!(
+                "Cluster {}\n{}\n{:?}\n\n{}",
+                cluster_index, assignment.label, assignment.category, assignment.index
+            );
             let circle = Circle::new()
-                .set("fill", color)
+                .set("fill", format!("url(#g{})", color_index))
                 .set("fill-opacity", assignment.label / 5.0 * 4.0 + 0.2)
                 .set("r", 1)
                 .set("cx", point.x)
-                .set("cy", point.y);
-
+                .set("cy", point.y)
+                .add(Title::new().add(Text::new(text)));
             doc = doc.add(circle);
         }
     }
-    println!("{:?}", clusters);
-
+    //println!("{:?}", clusters);
     svg::save(format!("target/_{}.svg", name), &doc).expect("Writing SVG failed");
-}
-
-// FuzzyDBSCAN should reduce to classic DBSCAN (eps_min = eps_max, pts_min = pts_max, hard).
-#[test]
-fn reduce_to_classic() {
-    let points = default_points();
-    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
-        distance_fn: &euclidean_distance,
-        eps_min: 10.0,
-        eps_max: 10.0,
-        pts_min: 50.0,
-        pts_max: 50.0,
-    };
-    let clusters = fuzzy_dbscan.cluster(&points);
-    dump_svg("reduce_to_classic", &points, &clusters);
-    assert_eq!(clusters.len(), 2);
-}
-
-// FuzzyDBSCAN should reduce to FuzzyBorderDBSCAN (pts_min = pts_max, hard).
-#[test]
-fn reduce_to_fuzzy_border() {
-    let points = default_points();
-    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
-        distance_fn: &euclidean_distance,
-        eps_min: 10.0,
-        eps_max: 20.0,
-        pts_min: 50.0,
-        pts_max: 50.0,
-    };
-    let clusters = fuzzy_dbscan.cluster(&points);
-    dump_svg("reduce_to_fuzzy_border", &points, &clusters);
-    assert_eq!(clusters.len(), 2);
 }
 
 // FuzzyDBSCAN should reduce to FuzzyCoreDBSCAN (eps_min = eps_max, hard).
 #[test]
-fn reduce_to_fuzzy_core() {
-    let points = default_points();
+fn reduce_to_fuzzy_core_dbscan() {
+    let points = equal_sized_circles();
     let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
         distance_fn: &euclidean_distance,
         eps_min: 10.0,
@@ -145,64 +132,113 @@ fn reduce_to_fuzzy_core() {
         pts_max: 100.0,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
-    dump_svg("reduce_to_fuzzy_core", &points, &clusters);
+    dump_svg("reduce_to_fuzzy_core_dbscan", &points, &clusters);
     assert_eq!(clusters.len(), 2);
 }
 
-// FuzzyDBSCAN should find fuzzy cores.
+// FuzzyDBSCAN should reduce to FuzzyBorderDBSCAN (pts_min = pts_max, hard).
 #[test]
-fn find_fuzzy_cores() {
-    let points = [
-        &uniform_circle(40, 0.0, 0.0, 10.0)[..],
-        &uniform_circle(80, 100.0, 0.0, 10.0)[..],
-    ].concat();
+fn reduce_to_fuzzy_border_dbscan() {
+    let points = equal_sized_circles();
+    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
+        distance_fn: &euclidean_distance,
+        eps_min: 10.0,
+        eps_max: 15.0,
+        pts_min: 75.0,
+        pts_max: 75.0,
+    };
+    let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("reduce_to_fuzzy_border_dbscan", &points, &clusters);
+    assert_eq!(clusters.len(), 2);
+}
+
+// FuzzyDBSCAN should reduce to DBSCAN (eps_min = eps_max, pts_min = pts_max, hard).
+#[test]
+fn reduce_to_dbscan() {
+    let points = equal_sized_circles();
     let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
         distance_fn: &euclidean_distance,
         eps_min: 10.0,
         eps_max: 10.0,
         pts_min: 50.0,
-        pts_max: 70.0,
-    };
-    let clusters = fuzzy_dbscan.cluster(&points);
-    dump_svg("find_fuzzy_cores", &points, &clusters);
-    assert_eq!(clusters.len(), 2);
-}
-
-// FuzzyDBSCAN should find fuzzy borders.
-#[test]
-fn find_fuzzy_borders() {
-    let points = [
-        &uniform_circle(40, 0.0, 0.0, 10.0)[..],
-        &uniform_circle(80, 100.0, 0.0, 10.0)[..],
-    ].concat();
-    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
-        distance_fn: &euclidean_distance,
-        eps_min: 50.0,
-        eps_max: 90.0,
-        pts_min: 50.0,
         pts_max: 50.0,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
-    dump_svg("find_fuzzy_borders", &points, &clusters);
+    dump_svg("reduce_to_dbscan", &points, &clusters);
     assert_eq!(clusters.len(), 2);
 }
 
-// FuzzyDBSCAN should find fuzzy cores and borders.
+// FuzzyDBSCAN should find varying fuzzy cores.
 #[test]
-fn find_fuzzy_cores_and_borders() {
+fn vary_cores() {
     let points = [
-        &uniform_circle(40, 30.0, 0.0, 15.0)[..],
-        &uniform_circle(10, 50.0, 0.0, 10.0)[..],
-        &uniform_circle(40, 70.0, 0.0, 15.0)[..],
+        &uniform_circle(200, 0.0, 0.0, 10.0)[..],
+        &uniform_circle(100, 50.0, 0.0, 10.0)[..],
     ].concat();
     let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
         distance_fn: &euclidean_distance,
-        eps_min: 4.0,
-        eps_max: 6.0,
-        pts_min: 3.0,
-        pts_max: 10.0,
+        eps_min: 20.0,
+        eps_max: 20.0,
+        pts_min: 50.0,
+        pts_max: 200.0,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
-    dump_svg("find_fuzzy_cores_and_borders", &points, &clusters);
-    assert_eq!(clusters.len(), 7);
+    dump_svg("vary_cores", &points, &clusters);
+    assert_eq!(clusters.len(), 2);
+}
+
+// FuzzyDBSCAN should find varying fuzzy borders.
+#[test]
+fn vary_borders() {
+    let points = [
+        &uniform_circle(200, 0.0, 0.0, 15.0)[..],
+        &uniform_circle(200, 50.0, 0.0, 5.0)[..],
+    ].concat();
+    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
+        distance_fn: &euclidean_distance,
+        eps_min: 5.0,
+        eps_max: 20.0,
+        pts_min: 100.0,
+        pts_max: 100.0,
+    };
+    let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("vary_borders", &points, &clusters);
+    assert_eq!(clusters.len(), 2);
+}
+
+// FuzzyDBSCAN should find varying fuzzy cores and borders.
+#[test]
+fn vary_borders_and_cores() {
+    let points = [
+        &uniform_circle(500, 0.0, 0.0, 15.0)[..],
+        &uniform_circle(30, 20.0, 0.0, 5.0)[..],
+        &uniform_circle(30, 30.0, 0.0, 5.0)[..],
+        &uniform_circle(500, 50.0, 0.0, 15.0)[..],
+    ].concat();
+    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
+        distance_fn: &euclidean_distance,
+        eps_min: 7.0,
+        eps_max: 20.0,
+        pts_min: 200.0,
+        pts_max: 500.0,
+    };
+    let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("vary_borders_and_cores", &points, &clusters);
+    assert_eq!(clusters.len(), 2);
+}
+
+// FuzzyDBSCAN should find varying fuzzy cores and borders.
+#[test]
+fn noise() {
+    let points = [&uniform_circle(100, 0.0, 0.0, 20.0)[..]].concat();
+    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
+        distance_fn: &euclidean_distance,
+        eps_min: 100.0,
+        eps_max: 200.0,
+        pts_min: 200.0,
+        pts_max: 500.0,
+    };
+    let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("noise", &points, &clusters);
+    assert_eq!(clusters.len(), 2);
 }
