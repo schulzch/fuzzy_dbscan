@@ -38,7 +38,7 @@ use std::collections::HashSet;
 use std::f32;
 
 /// A high-level classification, as defined by the FuzzyDBSCAN algorithm.
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum Category {
     Core,
     Border,

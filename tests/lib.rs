@@ -78,19 +78,25 @@ fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
     ];
     let mut defs = Definitions::new();
     for (color_index, color) in colors.iter().enumerate() {
-        let stop = |x: f32, y: f32| {
+        let stop = |x: f32| {
+            // Sample a Guassian distribution for more pleasant perception.
+            let phi = |x: f32| (1.0 / (2.0 * f32::consts::PI).sqrt() * (-0.5 * (x).powi(2)).exp());
             Stop::new()
                 .set("offset", format!("{}%", (x * 100.0).round()))
-                .set("stop-opacity", y)
+                .set("stop-opacity", phi(x * 4.0) / 0.4)
                 .set("stop-color", color.to_string())
         };
-        // Approximate Guassian gradient for more pleasant perception.
         let gradient = RadialGradient::new()
             .set("id", format!("g{}", color_index))
-            .add(stop(0.0, 1.0))
-            .add(stop(0.375, 0.375))
-            .add(stop(0.625, 0.0625))
-            .add(stop(1.0, 0.0));
+            .add(stop(0.0))
+            .add(stop(0.125))
+            .add(stop(0.25))
+            .add(stop(0.375))
+            .add(stop(0.5))
+            .add(stop(0.625))
+            .add(stop(0.75))
+            .add(stop(0.875))
+            .add(stop(1.0));
         defs = defs.add(gradient);
     }
     doc = doc.add(defs);
@@ -227,6 +233,27 @@ fn vary_borders_and_cores() {
     assert_eq!(clusters.len(), 2);
 }
 
+// FuzzyDBSCAN should find varying one DBSCAN-style cluster.
+#[test]
+fn vary_nothing() {
+    let points = [
+        &uniform_circle(500, 0.0, 0.0, 15.0)[..],
+        &uniform_circle(30, 20.0, 0.0, 5.0)[..],
+        &uniform_circle(30, 30.0, 0.0, 5.0)[..],
+        &uniform_circle(500, 50.0, 0.0, 15.0)[..],
+    ].concat();
+    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
+        distance_fn: &euclidean_distance,
+        eps_min: 20.0,
+        eps_max: 20.0,
+        pts_min: 200.0,
+        pts_max: 200.0,
+    };
+    let clusters = fuzzy_dbscan.cluster(&points);
+    dump_svg("vary_nothing", &points, &clusters);
+    assert_eq!(clusters.len(), 1);
+}
+
 // FuzzyDBSCAN should find varying fuzzy cores and borders.
 #[test]
 fn noise() {
@@ -240,5 +267,6 @@ fn noise() {
     };
     let clusters = fuzzy_dbscan.cluster(&points);
     dump_svg("noise", &points, &clusters);
-    assert_eq!(clusters.len(), 2);
+    assert_eq!(clusters.len(), 1);
+    assert_eq!(clusters[0][0].category, Category::Noise);
 }

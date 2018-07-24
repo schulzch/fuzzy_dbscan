@@ -18,4 +18,4 @@ license = "Apache-2.0"
 
 [dev-dependencies]
 rand = "0.3"
-svg = "0.5.11"
+svg = "0.5"
