@@ -2,6 +2,8 @@
 
 This crate computes [fuzzy clusters](https://en.wikipedia.org/wiki/Fuzzy_clustering) using the FuzzyDBSCAN algorithm [1].
 
+![Example](doc/example.svg)
+
 ## Usage
 
 See [documentation](https://docs.rs/fuzzy_dbscan) for an example.
