@@ -1,6 +1,8 @@
-# fuzzy_dbscan
+# fuzzy_dbscan [![Crates.io](https://img.shields.io/crates/v/fuzzy_dbscan.svg)](https://crates.io/crates/fuzzy_dbscan) [![Docs.rs](https://docs.rs/fuzzy_dbscan/badge.svg)](https://docs.rs/fuzzy_dbscan)
 
-This crate computes [fuzzy clusters](https://en.wikipedia.org/wiki/Fuzzy_clustering) using the FuzzyDBSCAN algorithm [1].
+An implementation of the FuzzyDBSCAN algorithm [1].
+
+FuzzyDBSCAN is an agglomerative [fuzzy clustering](https://en.wikipedia.org/wiki/Fuzzy_clustering) algorithm that groups set of points in such a way that one point can belong to more than one group. A points degree of membership is expressed as a category (core, border, noise) and a soft label (between 0.0 and 1.0).
 
 ![Example](doc/example.svg)
 
