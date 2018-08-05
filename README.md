@@ -4,7 +4,7 @@ An implementation of the FuzzyDBSCAN algorithm [1].
 
 FuzzyDBSCAN is an agglomerative [fuzzy clustering](https://en.wikipedia.org/wiki/Fuzzy_clustering) algorithm that groups set of points in such a way that one point can belong to more than one group. A points degree of membership is expressed as a category (core, border, noise) and a soft label (between 0.0 and 1.0).
 
-![Example](doc/example.svg)
+![Example](https://github.com/schulzch/fuzzy_dbscan/raw/master/doc/example.svg?sanitize=true)
 
 ## Usage
 
