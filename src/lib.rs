@@ -184,8 +184,7 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
             .filter(|(neighbor_index, neighbor_point)| {
                 *neighbor_index != point_index
                     && self.distance(neighbor_point, &points[point_index]) <= self.eps_max
-            })
-            .map(|(neighbor_index, _)| neighbor_index)
+            }).map(|(neighbor_index, _)| neighbor_index)
             .collect()
     }
 
