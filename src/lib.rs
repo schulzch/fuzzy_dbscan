@@ -185,7 +185,7 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
                 *neighbor_index != point_index
                     && self.distance(neighbor_point, &points[point_index]) <= self.eps_max
             }).map(|(neighbor_index, _)| neighbor_index)
-            .collect()
+            .collect() //TODO: would be neat to prevent this allocation.
     }
 
     fn density(&self, point_index: usize, neighbor_indices: &HashSet<usize>, points: &[P]) -> f32 {
