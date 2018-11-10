@@ -77,7 +77,7 @@ pub struct FuzzyDBSCAN<'a, P: 'a> {
 
 fn take_arbitrary(set: &mut HashSet<usize>) -> Option<usize> {
     let value_copy = if let Some(value) = set.iter().next() {
-        Some(value.clone())
+        Some(*value)
     } else {
         None
     };
