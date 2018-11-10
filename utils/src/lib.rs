@@ -116,7 +116,7 @@ pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
                 1 + cluster_index % (colors.len() - 1)
             };
             let text = format!(
-                "Cluster {}\n{}\n{:?}\n\n{}",
+                "Cluster: {}\n\nLabel: {:.1}\nCategory: {:?}\nPoint-Index: {}",
                 cluster_index, assignment.label, assignment.category, assignment.index
             );
             let circle = Circle::new()
