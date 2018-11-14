@@ -42,13 +42,6 @@ pub fn uniform_circle(n: usize, cx: f32, cy: f32, r: f32) -> Vec<Point> {
     return points;
 }
 
-pub fn equal_sized_circles() -> Vec<Point> {
-    flat_vec![
-        uniform_circle(100, 0.0, 0.0, 10.0),
-        uniform_circle(100, 50.0, 0.0, 10.0),
-    ]
-}
-
 pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
     let (min_x, min_y, max_x, max_y) = points.iter().cloned().fold(
         (f32::MAX, f32::MAX, f32::MIN, f32::MIN),
