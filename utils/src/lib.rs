@@ -17,6 +17,7 @@ pub struct Point {
 
 #[macro_export]
 macro_rules! flat_vec {
+    [ $x:expr ] => { [ & $x [..] ].concat() };
     [ $( $x:expr , )* ] => { [ $( & $x [..], )* ].concat() };
 }
 

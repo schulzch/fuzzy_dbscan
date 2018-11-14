@@ -135,7 +135,7 @@ fn vary_nothing() {
 // FuzzyDBSCAN should find varying fuzzy cores and borders.
 #[test]
 fn noise() {
-    let points = [&uniform_circle(100, 0.0, 0.0, 20.0)[..]].concat();
+    let points = flat_vec![uniform_circle(100, 0.0, 0.0, 20.0)];
     let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
         distance_fn: &euclidean_distance,
         eps_min: 100.0,
