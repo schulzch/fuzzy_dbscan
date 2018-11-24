@@ -3,7 +3,8 @@ extern crate rand;
 extern crate svg;
 
 use fuzzy_dbscan::{Category, Cluster};
-use rand::{Rng, SeedableRng, StdRng};
+use rand::distributions::{Distribution, Normal};
+use rand::{SeedableRng, StdRng};
 use std::f32;
 use svg::node::element::{Circle, Definitions, RadialGradient, Stop, Title};
 use svg::node::Text;
@@ -25,21 +26,31 @@ pub fn euclidean_distance(a: &Point, b: &Point) -> f32 {
     ((b.x - a.x).powi(2) + (b.y - a.y).powi(2)).sqrt()
 }
 
-pub fn uniform_circle(n: usize, cx: f32, cy: f32, r: f32) -> Vec<Point> {
+fn seeded_rng() -> StdRng {
     let mut seed = [0u8; 32];
     seed.copy_from_slice((0..32).map(|i| i + 1).collect::<Vec<u8>>().as_slice());
-    let mut random: StdRng = SeedableRng::from_seed(seed);
+    SeedableRng::from_seed(seed)
+}
+
+pub fn gaussian_circle(n: usize, cx: f32, cy: f32, r: f32) -> Vec<Point> {
+    let center = Point { x: cx, y: cy };
+    let sigma = r / 3.0;
+    let normal_x = Normal::new(cx as f64, sigma as f64);
+    let normal_y = Normal::new(cy as f64, sigma as f64);
+    let mut random = seeded_rng();
     let mut points = Vec::new();
-    for _ in 0..n {
-        let t = 2.0 * f32::consts::PI * random.gen::<f32>();
-        let u = random.gen::<f32>() + random.gen::<f32>();
-        let uu = if u > 1.0 { 2.0 - u } else { u };
-        points.push(Point {
-            x: cx + r * uu * t.cos(),
-            y: cy + r * uu * t.sin(),
-        });
+    let mut c = 0;
+    while c < n {
+        let sample = Point {
+            x: normal_x.sample(&mut random) as f32,
+            y: normal_y.sample(&mut random) as f32,
+        };
+        if euclidean_distance(&center, &sample) <= r {
+            points.push(sample);
+            c += 1;
+        }
     }
-    return points;
+    points
 }
 
 pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
@@ -110,8 +121,13 @@ pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
                 1 + cluster_index % (colors.len() - 1)
             };
             let text = format!(
-                "Cluster: {}\n\nLabel: {:.1}\nCategory: {:?}\nPoint-Index: {}",
-                cluster_index, assignment.label, assignment.category, assignment.index
+                "Cluster: {}\n\nLabel: {:.1}\nCategory: {:?}\nPoint-Index: {}\nLocation: {}, {}",
+                cluster_index,
+                assignment.label,
+                assignment.category,
+                assignment.index,
+                point.x,
+                point.y
             );
             let circle = Circle::new()
                 .set("fill", format!("url(#g{})", color_index))

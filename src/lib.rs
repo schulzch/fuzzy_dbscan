@@ -189,7 +189,7 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
     }
 
     fn density(&self, point_index: usize, neighbor_indices: &HashSet<usize>, points: &[P]) -> f32 {
-        neighbor_indices.iter().fold(0.0, |sum, &neighbor_index| {
+        1.0 + neighbor_indices.iter().fold(0.0, |sum, &neighbor_index| {
             sum + self.mu_distance(&points[point_index], &points[neighbor_index])
         })
     }
@@ -197,7 +197,7 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
     fn mu_min_p(&self, n: f32) -> f32 {
         if n >= self.pts_max {
             1.0
-        } else if n <= self.pts_min {
+        } else if n < self.pts_min {
             0.0
         } else {
             (n - self.pts_min) / (self.pts_max - self.pts_min)
