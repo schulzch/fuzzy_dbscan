@@ -27,18 +27,18 @@ macro_rules! assert_any {
     };
 }
 
-const BASE_N: usize = 100;
+const BASE_N: usize = 400;
 const BASE_R: f32 = 10.0;
 
 fn unimodal_gaussian() -> Vec<Point> {
     flat_vec![gaussian_circle(BASE_N, 0.0, 0.0, BASE_R)]
 }
 
-fn bimodal_gaussian() -> Vec<Point> {
+fn mixed_gaussian() -> Vec<Point> {
     flat_vec![
         gaussian_circle(BASE_N, 0.0, 0.0, BASE_R),
         gaussian_circle(BASE_N, BASE_R * 2.0, 0.0, BASE_R),
-        //TODO: more intersection! (bug?)
+        gaussian_circle(BASE_N / 8, BASE_R, 0.0, BASE_R / 2.0),
     ]
 }
 
@@ -116,17 +116,16 @@ fn reduce_to_fuzzy_border_dbscan() {
 // FuzzyDBSCAN should find varying fuzzy cores and borders.
 #[test]
 fn full_fuzzy_dbscan() {
-    let points = bimodal_gaussian();
-    // Expect that within the radius there can be between 50% and 100% of the
-    // points, thus there will be fuzzy cores. Moreover, expect that border
-    // points (<50% points) in the "bimodal valley" between the gaussians will be
-    // assigned to both clusters.
+    let points = mixed_gaussian();
+    // Expect that within 68% are within sigma and 95% within 2.0 * sigma for
+    // fuzzy cores. Moreover, expect ambigous border points in the "valley"
+    // between the two major gaussians.
     let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
         distance_fn: &euclidean_distance,
-        eps_min: 1.0,
-        eps_max: BASE_R,
-        pts_min: (BASE_N / 2) as f32,
-        pts_max: BASE_N as f32,
+        eps_min: BASE_R / 3.0,
+        eps_max: BASE_R / 3.0 * 2.0,
+        pts_min: (BASE_N / 2) as f32 * 0.68,
+        pts_max: (BASE_N / 2) as f32 * 0.95,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
     dump_svg("full_fuzzy_dbscan", &points, &clusters);
