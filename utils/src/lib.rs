@@ -91,11 +91,11 @@ pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
     let mut defs = Definitions::new();
     for (color_index, color) in colors.iter().enumerate() {
         let stop = |x: f32| {
-            // Sample a Guassian distribution for more pleasant perception.
-            let phi = |x: f32| (1.0 / (2.0 * f32::consts::PI).sqrt() * (-0.5 * (x).powi(2)).exp());
+            // Guassian apodization function for more pleasant perception.
+            let A = |x: f32| (-x.powi(2) / (2.0 * (1.0 / 3.0_f32).powi(2))).exp();
             Stop::new()
                 .set("offset", format!("{}%", (x * 100.0).round()))
-                .set("stop-opacity", phi(x * 4.0) / 0.4)
+                .set("stop-opacity", A(x))
                 .set("stop-color", color.to_string())
         };
         let gradient = RadialGradient::new()
@@ -131,8 +131,8 @@ pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
             );
             let circle = Circle::new()
                 .set("fill", format!("url(#g{})", color_index))
-                .set("fill-opacity", assignment.label / 5.0 * 4.0 + 0.2)
-                .set("r", 1)
+                .set("fill-opacity", assignment.label * 0.9 + 0.1)
+                .set("r", 0.5)
                 .set("cx", point.x)
                 .set("cy", point.y)
                 .add(Title::new().add(Text::new(text)));
