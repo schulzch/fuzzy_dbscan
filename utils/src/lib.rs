@@ -115,10 +115,16 @@ pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
     for (cluster_index, cluster) in clusters.iter().enumerate() {
         for assignment in cluster {
             let point = &points[assignment.index];
+            let opacity = assignment.label * 0.9 + 0.1;
             let color_index = if let Category::Noise = assignment.category {
                 0
             } else {
                 1 + cluster_index % (colors.len() - 1)
+            };
+            let stroke_width = if let Category::Core = assignment.category {
+                0.01
+            } else {
+                0.0
             };
             let text = format!(
                 "Cluster: {}\n\nLabel: {:.1}\nCategory: {:?}\nPoint-Index: {}\nLocation: {}, {}",
@@ -131,7 +137,10 @@ pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
             );
             let circle = Circle::new()
                 .set("fill", format!("url(#g{})", color_index))
-                .set("fill-opacity", assignment.label * 0.9 + 0.1)
+                .set("fill-opacity", opacity)
+                .set("stroke", "black")
+                .set("stroke-width", stroke_width)
+                .set("stroke-opacity", opacity)
                 .set("r", 0.5)
                 .set("cx", point.x)
                 .set("cy", point.y)
