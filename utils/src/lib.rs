@@ -92,10 +92,10 @@ pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
     for (color_index, color) in colors.iter().enumerate() {
         let stop = |x: f32| {
             // Guassian apodization function for more pleasant perception.
-            let A = |x: f32| (-x.powi(2) / (2.0 * (1.0 / 3.0_f32).powi(2))).exp();
+            let apo = |x: f32| (-x.powi(2) / (2.0 * (1.0 / 3.0_f32).powi(2))).exp();
             Stop::new()
                 .set("offset", format!("{}%", (x * 100.0).round()))
-                .set("stop-opacity", A(x))
+                .set("stop-opacity", apo(x))
                 .set("stop-color", color.to_string())
         };
         let gradient = RadialGradient::new()
