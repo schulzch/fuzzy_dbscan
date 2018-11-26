@@ -34,11 +34,16 @@
 //!     println!("{:?}", fuzzy_dbscan.cluster(&points));
 //! }
 //! ```
+extern crate js_sys;
+extern crate wasm_bindgen;
+
 use std::collections::HashSet;
 use std::f32;
+use wasm_bindgen::prelude::*;
 
 /// A high-level classification, as defined by the FuzzyDBSCAN algorithm.
-#[derive(PartialEq, Debug)]
+#[wasm_bindgen]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum Category {
     Core,
     Border,
@@ -46,6 +51,7 @@ pub enum Category {
 }
 
 /// An element of a [cluster](Cluster).
+#[wasm_bindgen]
 #[derive(Debug)]
 pub struct Assignment {
     /// The point index.
@@ -217,5 +223,92 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
 
     fn distance(&self, a: &P, b: &P) -> f32 {
         (self.distance_fn)(a, b)
+    }
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[wasm_bindgen(js_name = FuzzyDBSCAN)]
+pub struct FuzzyDBSCANWASM {
+    inner: FuzzyDBSCAN<'static, JsValue>,
+    f: js_sys::Function,
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[wasm_bindgen]
+#[allow(non_snake_case)]
+impl FuzzyDBSCANWASM {
+    fn nan_distance(_: &JsValue, _: &JsValue) -> f32 {
+        //TODO: find a way to call self.f.call2(this, a, b);
+        f32::NAN
+    }
+
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        FuzzyDBSCANWASM {
+            inner: FuzzyDBSCAN::<JsValue> {
+                distance_fn: &Self::nan_distance,
+                eps_min: std::f32::NAN,
+                eps_max: std::f32::NAN,
+                pts_min: std::f32::NAN,
+                pts_max: std::f32::NAN,
+            },
+            f: js_sys::Function::new_no_args(""),
+        }
+    }
+
+    #[wasm_bindgen(method, getter)]
+    pub fn distanceFn(&self) -> js_sys::Function {
+        self.f.clone()
+    }
+
+    #[wasm_bindgen(method, setter)]
+    pub fn set_distanceFn(&mut self, f: &js_sys::Function) {
+        self.f = f.clone();
+    }
+
+    #[wasm_bindgen(method, getter)]
+    pub fn epsMin(&self) -> f32 {
+        self.inner.eps_min
+    }
+
+    #[wasm_bindgen(method, setter)]
+    pub fn set_epsMin(&mut self, val: f32) {
+        self.inner.eps_min = val;
+    }
+
+    #[wasm_bindgen(method, getter)]
+    pub fn epsMax(&self) -> f32 {
+        self.inner.eps_max
+    }
+
+    #[wasm_bindgen(method, setter)]
+    pub fn set_epsMax(&mut self, val: f32) {
+        self.inner.eps_max = val;
+    }
+
+    #[wasm_bindgen(method, getter)]
+    pub fn ptsMin(&self) -> f32 {
+        self.inner.pts_min
+    }
+
+    #[wasm_bindgen(method, setter)]
+    pub fn set_ptsMin(&mut self, val: f32) {
+        self.inner.pts_min = val;
+    }
+
+    #[wasm_bindgen(method, getter)]
+    pub fn ptsMax(&self) -> f32 {
+        self.inner.pts_max
+    }
+
+    #[wasm_bindgen(method, setter)]
+    pub fn set_ptsMax(&mut self, val: f32) {
+        self.inner.pts_max = val;
+    }
+
+    pub fn cluster(&self, points: Box<[JsValue]>) -> Box<[JsValue]> {
+        //TODO: work around missing support for Box<[Box<[JsValue]>]>.
+        let _clusters = self.inner.cluster(&points);
+        vec![JsValue::NULL, JsValue::UNDEFINED].into_boxed_slice()
     }
 }
