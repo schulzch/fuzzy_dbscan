@@ -14,8 +14,7 @@ fn bench_lib(c: &mut Criterion) {
             gaussian_circle(100, 0.0, 0.0, 10.0),
             gaussian_circle(100, 50.0, 0.0, 10.0),
         ];
-        let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
-            distance_fn: &euclidean_distance,
+        let fuzzy_dbscan = FuzzyDBSCAN {
             eps_min: 20.0,
             eps_max: 20.0,
             pts_min: 50.0,

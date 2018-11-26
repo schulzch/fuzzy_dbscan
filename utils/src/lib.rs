@@ -2,7 +2,7 @@ extern crate fuzzy_dbscan;
 extern crate rand;
 extern crate svg;
 
-use fuzzy_dbscan::{Category, Cluster};
+use fuzzy_dbscan::{Category, Cluster, MetricSpace};
 use rand::distributions::{Distribution, Normal};
 use rand::{SeedableRng, StdRng};
 use std::f32;
@@ -10,20 +10,22 @@ use svg::node::element::{Circle, Definitions, RadialGradient, Stop, Title};
 use svg::node::Text;
 use svg::Document;
 
-#[derive(Clone)]
-pub struct Point {
-    x: f32,
-    y: f32,
-}
-
 #[macro_export]
 macro_rules! flat_vec {
     [ $x:expr ] => { [ & $x [..] ].concat() };
     [ $( $x:expr , )* ] => { [ $( & $x [..], )* ].concat() };
 }
 
-pub fn euclidean_distance(a: &Point, b: &Point) -> f32 {
-    ((b.x - a.x).powi(2) + (b.y - a.y).powi(2)).sqrt()
+#[derive(Clone)]
+pub struct Point {
+    x: f32,
+    y: f32,
+}
+
+impl MetricSpace for Point {
+    fn distance(&self, other: &Self) -> f32 {
+        ((other.x - self.x).powi(2) + (other.y - self.y).powi(2)).sqrt()
+    }
 }
 
 fn seeded_rng() -> StdRng {
@@ -45,7 +47,7 @@ pub fn gaussian_circle(n: usize, cx: f32, cy: f32, r: f32) -> Vec<Point> {
             x: normal_x.sample(&mut random) as f32,
             y: normal_y.sample(&mut random) as f32,
         };
-        if euclidean_distance(&center, &sample) <= r {
+        if center.distance(&sample) <= r {
             points.push(sample);
             c += 1;
         }

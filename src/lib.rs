@@ -11,8 +11,10 @@
 //!     y: f32,
 //! }
 //!
-//! fn euclidean_distance(a: &Point, b: &Point) -> f32 {
-//!     ((b.x - a.x).powi(2) + (b.y - a.y).powi(2)).sqrt()
+//! impl fuzzy_dbscan::MetricSpace for Point {
+//!     fn distance(&self, other: &Self) -> f32 {
+//!         ((other.x - self.x).powi(2) + (other.y - self.y).powi(2)).sqrt()
+//!     }
 //! }
 //!
 //! fn main() {
@@ -23,8 +25,7 @@
 //!         Point { x: 115.0, y: 115.0 },
 //!     ];
 //!
-//!     let fuzzy_dbscan = fuzzy_dbscan::FuzzyDBSCAN::<Point> {
-//!         distance_fn: &euclidean_distance,
+//!     let fuzzy_dbscan = fuzzy_dbscan::FuzzyDBSCAN {
 //!         eps_min: 10.0,
 //!         eps_max: 20.0,
 //!         pts_min: 1.0,
@@ -65,10 +66,16 @@ pub struct Assignment {
 /// A group of [assigned](Assignment) points.
 pub type Cluster = Vec<Assignment>;
 
+/// A trait to compute distances between points.
+pub trait MetricSpace: Sized {
+    /// Returns the distance between `self` and `other`.
+    fn distance(&self, other: &Self) -> f32;
+}
+
 /// An instance of the FuzzyDBSCAN algorithm.
 ///
 /// Note that when setting `eps_min = eps_max` and `pts_min = pts_max` the algorithm will reduce to classic DBSCAN.
-pub struct FuzzyDBSCAN<'a, P: 'a> {
+pub struct FuzzyDBSCAN {
     /// The minimum fuzzy local neighborhood radius.
     pub eps_min: f32,
     /// The maximum fuzzy local neighborhood radius.
@@ -77,8 +84,6 @@ pub struct FuzzyDBSCAN<'a, P: 'a> {
     pub pts_min: f32,
     /// The maximum fuzzy neighborhood density (number of points).
     pub pts_max: f32,
-    /// The metric used to determine distances between points.
-    pub distance_fn: &'a Fn(&P, &P) -> f32,
 }
 
 fn take_arbitrary(set: &mut HashSet<usize>) -> Option<usize> {
@@ -94,9 +99,9 @@ fn take_arbitrary(set: &mut HashSet<usize>) -> Option<usize> {
     }
 }
 
-impl<'a, P> FuzzyDBSCAN<'a, P> {
+impl FuzzyDBSCAN {
     /// Clusters a list of `points`.
-    pub fn cluster(&self, points: &[P]) -> Vec<Cluster> {
+    pub fn cluster<P: MetricSpace>(&self, points: &[P]) -> Vec<Cluster> {
         let mut clusters = Vec::new();
         let mut noise_cluster = Vec::new();
         let mut visited = vec![false; points.len()];
@@ -129,7 +134,7 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
         clusters
     }
 
-    fn expand_cluster_fuzzy(
+    fn expand_cluster_fuzzy<P: MetricSpace>(
         &self,
         point_label: f32,
         point_index: usize,
@@ -183,18 +188,23 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
         cluster
     }
 
-    fn region_query(&self, points: &[P], point_index: usize) -> HashSet<usize> {
+    fn region_query<P: MetricSpace>(&self, points: &[P], point_index: usize) -> HashSet<usize> {
         points
             .iter()
             .enumerate()
             .filter(|(neighbor_index, neighbor_point)| {
                 *neighbor_index != point_index
-                    && self.distance(neighbor_point, &points[point_index]) <= self.eps_max
+                    && neighbor_point.distance(&points[point_index]) <= self.eps_max
             }).map(|(neighbor_index, _)| neighbor_index)
             .collect() //TODO: would be neat to prevent this allocation.
     }
 
-    fn density(&self, point_index: usize, neighbor_indices: &HashSet<usize>, points: &[P]) -> f32 {
+    fn density<P: MetricSpace>(
+        &self,
+        point_index: usize,
+        neighbor_indices: &HashSet<usize>,
+        points: &[P],
+    ) -> f32 {
         1.0 + neighbor_indices.iter().fold(0.0, |sum, &neighbor_index| {
             sum + self.mu_distance(&points[point_index], &points[neighbor_index])
         })
@@ -210,8 +220,8 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
         }
     }
 
-    fn mu_distance(&self, a: &P, b: &P) -> f32 {
-        let distance = self.distance(a, b);
+    fn mu_distance<P: MetricSpace>(&self, a: &P, b: &P) -> f32 {
+        let distance = a.distance(b);
         if distance <= self.eps_min {
             1.0
         } else if distance > self.eps_max {
@@ -220,16 +230,26 @@ impl<'a, P> FuzzyDBSCAN<'a, P> {
             (self.eps_max - distance) / (self.eps_max - self.eps_min)
         }
     }
+}
 
-    fn distance(&self, a: &P, b: &P) -> f32 {
-        (self.distance_fn)(a, b)
+#[wasm_bindgen]
+extern "C" {
+    type JsPoint;
+
+    fn distance(a: &JsPoint, b: &JsPoint) -> f32;
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+impl MetricSpace for JsPoint {
+    fn distance(&self, other: &Self) -> f32 {
+        distance(self, other)
     }
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 #[wasm_bindgen(js_name = FuzzyDBSCAN)]
 pub struct FuzzyDBSCANWASM {
-    inner: FuzzyDBSCAN<'static, JsValue>,
+    inner: FuzzyDBSCAN,
     f: js_sys::Function,
 }
 
@@ -237,16 +257,10 @@ pub struct FuzzyDBSCANWASM {
 #[wasm_bindgen]
 #[allow(non_snake_case)]
 impl FuzzyDBSCANWASM {
-    fn nan_distance(_: &JsValue, _: &JsValue) -> f32 {
-        //TODO: find a way to call self.f.call2(this, a, b);
-        f32::NAN
-    }
-
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         FuzzyDBSCANWASM {
-            inner: FuzzyDBSCAN::<JsValue> {
-                distance_fn: &Self::nan_distance,
+            inner: FuzzyDBSCAN {
                 eps_min: std::f32::NAN,
                 eps_max: std::f32::NAN,
                 pts_min: std::f32::NAN,
@@ -306,9 +320,9 @@ impl FuzzyDBSCANWASM {
         self.inner.pts_max = val;
     }
 
-    pub fn cluster(&self, points: Box<[JsValue]>) -> Box<[JsValue]> {
+    pub fn cluster(&self, _points: Box<[JsValue]>) -> Box<[JsValue]> {
         //TODO: work around missing support for Box<[Box<[JsValue]>]>.
-        let _clusters = self.inner.cluster(&points);
+        //let _clusters = self.inner.cluster(&points);
         vec![JsValue::NULL, JsValue::UNDEFINED].into_boxed_slice()
     }
 }

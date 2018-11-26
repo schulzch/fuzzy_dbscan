@@ -48,8 +48,7 @@ fn mixed_gaussian() -> Vec<Point> {
 fn reduce_to_dbscan() {
     let points = unimodal_gaussian();
     // Expect that within the radius should be at least one point.
-    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
-        distance_fn: &euclidean_distance,
+    let fuzzy_dbscan = FuzzyDBSCAN {
         eps_min: BASE_R,
         eps_max: BASE_R,
         pts_min: 1.0,
@@ -69,8 +68,7 @@ fn reduce_to_fuzzy_core_dbscan() {
     let points = unimodal_gaussian();
     // Expect that within the radius there can be between one and 100% of the points,
     // thus fuzzy cores will be between 0.5 and 1.0.
-    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
-        distance_fn: &euclidean_distance,
+    let fuzzy_dbscan = FuzzyDBSCAN {
         eps_min: BASE_R,
         eps_max: BASE_R,
         pts_min: 1.0,
@@ -95,8 +93,7 @@ fn reduce_to_fuzzy_border_dbscan() {
     let points = unimodal_gaussian();
     // Expect that crisp core points are close to 50% of the points within the
     // maximum radius, thus less than 50% neighbourhood means border.
-    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
-        distance_fn: &euclidean_distance,
+    let fuzzy_dbscan = FuzzyDBSCAN {
         eps_min: 1.0,
         eps_max: BASE_R,
         pts_min: (BASE_N / 2) as f32,
@@ -120,8 +117,7 @@ fn full_fuzzy_dbscan() {
     // Expect that within 68% are within sigma and 95% within 2.0 * sigma for
     // fuzzy cores. Moreover, expect ambigous border points in the "valley"
     // between the two major gaussians.
-    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
-        distance_fn: &euclidean_distance,
+    let fuzzy_dbscan = FuzzyDBSCAN {
         eps_min: BASE_R / 3.0,
         eps_max: BASE_R / 3.0 * 2.0,
         pts_min: (BASE_N / 2) as f32 * 0.68,
@@ -147,8 +143,7 @@ fn full_fuzzy_dbscan() {
 #[test]
 fn noise() {
     let points = unimodal_gaussian();
-    let fuzzy_dbscan = FuzzyDBSCAN::<Point> {
-        distance_fn: &euclidean_distance,
+    let fuzzy_dbscan = FuzzyDBSCAN {
         eps_min: BASE_R * 2.0,
         eps_max: BASE_R * 4.0,
         pts_min: BASE_N as f32 * 2.0,
