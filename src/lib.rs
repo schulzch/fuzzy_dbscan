@@ -38,9 +38,12 @@
 extern crate js_sys;
 extern crate wasm_bindgen;
 
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+use js_sys::*;
+use wasm_bindgen::prelude::*;
+
 use std::collections::HashSet;
 use std::f32;
-use wasm_bindgen::prelude::*;
 
 /// A high-level classification, as defined by the FuzzyDBSCAN algorithm.
 #[wasm_bindgen]
@@ -320,9 +323,23 @@ impl FuzzyDBSCANWASM {
         self.inner.pts_max = val;
     }
 
-    pub fn cluster(&self, _points: Box<[JsValue]>) -> Box<[JsValue]> {
-        //TODO: work around missing support for Box<[Box<[JsValue]>]>.
-        //let _clusters = self.inner.cluster(&points);
-        vec![JsValue::NULL, JsValue::UNDEFINED].into_boxed_slice()
+    pub fn cluster(&self, js_points: js_sys::Array) -> js_sys::Array {
+        use wasm_bindgen::JsCast;
+        // Convert from JS.
+        let mut points = Vec::<JsPoint>::new();
+        js_points.for_each(&mut |obj, _idx, _arr| points.push(obj.dyn_into::<JsPoint>().unwrap()));
+        // Run the algorithm.
+        let clusters = self.inner.cluster(&points);
+        // Convert to JS.
+        let js_clusters = Array::new();
+        for cluster in clusters.iter() {
+            let js_cluster = Array::new();
+            for assignment in cluster {
+                //TODO: this does not work
+                //js_cluster.push(assignment);
+            }
+            js_clusters.push(&js_cluster);
+        }
+        js_clusters
     }
 }
