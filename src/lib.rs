@@ -56,7 +56,7 @@ pub enum Category {
 
 /// An element of a [cluster](Cluster).
 #[wasm_bindgen]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Assignment {
     /// The point index.
     pub index: usize,
@@ -334,9 +334,9 @@ impl FuzzyDBSCANWASM {
         let js_clusters = Array::new();
         for cluster in clusters.iter() {
             let js_cluster = Array::new();
-            for assignment in cluster {
-                //TODO: this does not work
-                //js_cluster.push(assignment);
+            for assignment in cluster.iter() {
+                let js_assignment = (*assignment).clone().into();
+                js_cluster.push(&js_assignment);
             }
             js_clusters.push(&js_cluster);
         }
