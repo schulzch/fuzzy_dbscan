@@ -65,18 +65,16 @@ pub trait MetricSpace: Sized {
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-#[wasm_bindgen]
-extern "C" {
-    type JsPoint;
-
-    #[wasm_bindgen(method)]
-    fn distance(this: &JsPoint, that: &JsPoint) -> f32;
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-impl MetricSpace for JsPoint {
+impl MetricSpace for JsValue {
     fn distance(&self, other: &Self) -> f32 {
-        self.distance(other)
+        //TODO: verify that this is not slow as hell
+        let key_x = JsValue::from("x");
+        let key_y = JsValue::from("y");
+        let ax = Reflect::get(self, &key_x).unwrap().as_f64().unwrap();
+        let ay = Reflect::get(self, &key_y).unwrap().as_f64().unwrap();
+        let bx = Reflect::get(other, &key_x).unwrap().as_f64().unwrap();
+        let by = Reflect::get(other, &key_y).unwrap().as_f64().unwrap();
+        ((bx - ax).powi(2) + (by - ay).powi(2)).sqrt() as f32
     }
 }
 
@@ -137,8 +135,8 @@ impl FuzzyDBSCAN {
     pub fn cluster(&self, js_points: js_sys::Array) -> js_sys::Array {
         use wasm_bindgen::JsCast;
         // Convert from JS.
-        let mut points = Vec::<JsPoint>::new();
-        js_points.for_each(&mut |obj, _idx, _arr| points.push(obj.dyn_into::<JsPoint>().unwrap()));
+        let mut points = Vec::<JsValue>::new();
+        js_points.for_each(&mut |obj, _idx, _arr| points.push(obj));
         // Run the algorithm.
         let clusters = self.fuzzy_dbscan(&points);
         // Convert to JS.
