@@ -45,6 +45,41 @@ use wasm_bindgen::prelude::*;
 use std::collections::HashSet;
 use std::f32;
 
+fn take_arbitrary(set: &mut HashSet<usize>) -> Option<usize> {
+    let value_copy = if let Some(value) = set.iter().next() {
+        Some(*value)
+    } else {
+        None
+    };
+    if let Some(value) = value_copy {
+        set.take(&value)
+    } else {
+        None
+    }
+}
+
+/// A trait to compute distances between points.
+pub trait MetricSpace: Sized {
+    /// Returns the distance between `self` and `other`.
+    fn distance(&self, other: &Self) -> f32;
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[wasm_bindgen]
+extern "C" {
+    type JsPoint;
+
+    #[wasm_bindgen(method)]
+    fn distance(this: &JsPoint, that: &JsPoint) -> f32;
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+impl MetricSpace for JsPoint {
+    fn distance(&self, other: &Self) -> f32 {
+        self.distance(other)
+    }
+}
+
 /// A high-level classification, as defined by the FuzzyDBSCAN algorithm.
 #[wasm_bindgen]
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -69,15 +104,10 @@ pub struct Assignment {
 /// A group of [assigned](Assignment) points.
 pub type Cluster = Vec<Assignment>;
 
-/// A trait to compute distances between points.
-pub trait MetricSpace: Sized {
-    /// Returns the distance between `self` and `other`.
-    fn distance(&self, other: &Self) -> f32;
-}
-
 /// An instance of the FuzzyDBSCAN algorithm.
 ///
 /// Note that when setting `eps_min = eps_max` and `pts_min = pts_max` the algorithm will reduce to classic DBSCAN.
+#[wasm_bindgen]
 pub struct FuzzyDBSCAN {
     /// The minimum fuzzy local neighborhood radius.
     pub eps_min: f32,
@@ -89,22 +119,52 @@ pub struct FuzzyDBSCAN {
     pub pts_max: f32,
 }
 
-fn take_arbitrary(set: &mut HashSet<usize>) -> Option<usize> {
-    let value_copy = if let Some(value) = set.iter().next() {
-        Some(*value)
-    } else {
-        None
-    };
-    if let Some(value) = value_copy {
-        set.take(&value)
-    } else {
-        None
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[wasm_bindgen]
+impl FuzzyDBSCAN {
+    /// Creates a new instance of the algorithm.
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        FuzzyDBSCAN {
+            eps_min: f32::NAN,
+            eps_max: f32::NAN,
+            pts_min: f32::NAN,
+            pts_max: f32::NAN,
+        }
+    }
+
+    /// Clusters a list of `js_points`.
+    pub fn cluster(&self, js_points: js_sys::Array) -> js_sys::Array {
+        use wasm_bindgen::JsCast;
+        // Convert from JS.
+        let mut points = Vec::<JsPoint>::new();
+        js_points.for_each(&mut |obj, _idx, _arr| points.push(obj.dyn_into::<JsPoint>().unwrap()));
+        // Run the algorithm.
+        let clusters = self.fuzzy_dbscan(&points);
+        // Convert to JS.
+        let js_clusters = Array::new();
+        for cluster in clusters.iter() {
+            let js_cluster = Array::new();
+            for assignment in cluster.iter() {
+                let js_assignment = (*assignment).clone().into();
+                js_cluster.push(&js_assignment);
+            }
+            js_clusters.push(&js_cluster);
+        }
+        js_clusters
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl FuzzyDBSCAN {
+    /// Clusters a list of `points`.
+    pub fn cluster<P: MetricSpace>(&self, points: &[P]) -> Vec<Cluster> {
+        self.fuzzy_dbscan(points)
     }
 }
 
 impl FuzzyDBSCAN {
-    /// Clusters a list of `points`.
-    pub fn cluster<P: MetricSpace>(&self, points: &[P]) -> Vec<Cluster> {
+    fn fuzzy_dbscan<P: MetricSpace>(&self, points: &[P]) -> Vec<Cluster> {
         let mut clusters = Vec::new();
         let mut noise_cluster = Vec::new();
         let mut visited = vec![false; points.len()];
@@ -232,114 +292,5 @@ impl FuzzyDBSCAN {
         } else {
             (self.eps_max - distance) / (self.eps_max - self.eps_min)
         }
-    }
-}
-
-#[wasm_bindgen]
-extern "C" {
-    type JsPoint;
-
-    fn distance(a: &JsPoint, b: &JsPoint) -> f32;
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-impl MetricSpace for JsPoint {
-    fn distance(&self, other: &Self) -> f32 {
-        distance(self, other)
-    }
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-#[wasm_bindgen(js_name = FuzzyDBSCAN)]
-pub struct FuzzyDBSCANWASM {
-    inner: FuzzyDBSCAN,
-    f: js_sys::Function,
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-#[wasm_bindgen]
-#[allow(non_snake_case)]
-impl FuzzyDBSCANWASM {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        FuzzyDBSCANWASM {
-            inner: FuzzyDBSCAN {
-                eps_min: std::f32::NAN,
-                eps_max: std::f32::NAN,
-                pts_min: std::f32::NAN,
-                pts_max: std::f32::NAN,
-            },
-            f: js_sys::Function::new_no_args(""),
-        }
-    }
-
-    #[wasm_bindgen(method, getter)]
-    pub fn distanceFn(&self) -> js_sys::Function {
-        self.f.clone()
-    }
-
-    #[wasm_bindgen(method, setter)]
-    pub fn set_distanceFn(&mut self, f: &js_sys::Function) {
-        self.f = f.clone();
-    }
-
-    #[wasm_bindgen(method, getter)]
-    pub fn epsMin(&self) -> f32 {
-        self.inner.eps_min
-    }
-
-    #[wasm_bindgen(method, setter)]
-    pub fn set_epsMin(&mut self, val: f32) {
-        self.inner.eps_min = val;
-    }
-
-    #[wasm_bindgen(method, getter)]
-    pub fn epsMax(&self) -> f32 {
-        self.inner.eps_max
-    }
-
-    #[wasm_bindgen(method, setter)]
-    pub fn set_epsMax(&mut self, val: f32) {
-        self.inner.eps_max = val;
-    }
-
-    #[wasm_bindgen(method, getter)]
-    pub fn ptsMin(&self) -> f32 {
-        self.inner.pts_min
-    }
-
-    #[wasm_bindgen(method, setter)]
-    pub fn set_ptsMin(&mut self, val: f32) {
-        self.inner.pts_min = val;
-    }
-
-    #[wasm_bindgen(method, getter)]
-    pub fn ptsMax(&self) -> f32 {
-        self.inner.pts_max
-    }
-
-    #[wasm_bindgen(method, setter)]
-    pub fn set_ptsMax(&mut self, val: f32) {
-        self.inner.pts_max = val;
-    }
-
-    pub fn cluster(&self, js_points: js_sys::Array) -> js_sys::Array {
-        use wasm_bindgen::JsCast;
-        // Convert from JS.
-        let mut points = Vec::<JsPoint>::new();
-        js_points.for_each(&mut |obj, _idx, _arr| points.push(obj.dyn_into::<JsPoint>().unwrap()));
-        // Run the algorithm.
-        let clusters = self.inner.cluster(&points);
-        // Convert to JS.
-        let js_clusters = Array::new();
-        for cluster in clusters.iter() {
-            let js_cluster = Array::new();
-            for assignment in cluster.iter() {
-                let js_assignment = (*assignment).clone().into();
-                js_cluster.push(&js_assignment);
-            }
-            js_clusters.push(&js_cluster);
-        }
-        js_clusters
     }
 }
