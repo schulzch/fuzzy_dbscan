@@ -1,6 +1,6 @@
 [package]
 name = "fuzzy_dbscan"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Christoph Schulz <schulzcbs@gmail.com>"]
 description = "An implementation of the FuzzyDBSCAN algorithm"
 homepage = "https://github.com/schulzch/fuzzy_dbscan"
