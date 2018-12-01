@@ -1,4 +1,7 @@
 /target
 /.vscode
+/pkg/
+/bin/
 **/*.rs.bk
 Cargo.lock
+*.log

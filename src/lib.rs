@@ -35,11 +35,10 @@
 //!     println!("{:?}", fuzzy_dbscan.cluster(&points));
 //! }
 //! ```
-extern crate js_sys;
 extern crate wasm_bindgen;
+#[macro_use]
+extern crate serde_derive;
 
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-use js_sys::*;
 use wasm_bindgen::prelude::*;
 
 use std::collections::HashSet;
@@ -65,22 +64,21 @@ pub trait MetricSpace: Sized {
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-impl MetricSpace for JsValue {
+#[derive(Deserialize)]
+pub struct JsPoint {
+    x: f64,
+    y: f64,
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+impl MetricSpace for JsPoint {
     fn distance(&self, other: &Self) -> f32 {
-        //TODO: verify that this is not slow as hell
-        let key_x = JsValue::from("x");
-        let key_y = JsValue::from("y");
-        let ax = Reflect::get(self, &key_x).unwrap().as_f64().unwrap();
-        let ay = Reflect::get(self, &key_y).unwrap().as_f64().unwrap();
-        let bx = Reflect::get(other, &key_x).unwrap().as_f64().unwrap();
-        let by = Reflect::get(other, &key_y).unwrap().as_f64().unwrap();
-        ((bx - ax).powi(2) + (by - ay).powi(2)).sqrt() as f32
+        ((other.x - self.x).powi(2) + (other.y - self.y).powi(2)).sqrt() as f32
     }
 }
 
 /// A high-level classification, as defined by the FuzzyDBSCAN algorithm.
-#[wasm_bindgen]
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(PartialEq, Serialize)]
 pub enum Category {
     Core,
     Border,
@@ -88,8 +86,7 @@ pub enum Category {
 }
 
 /// An element of a [cluster](Cluster).
-#[wasm_bindgen]
-#[derive(Debug, Clone)]
+#[derive(Serialize)]
 pub struct Assignment {
     /// The point index.
     pub index: usize,
@@ -132,24 +129,10 @@ impl FuzzyDBSCAN {
     }
 
     /// Clusters a list of `js_points`.
-    pub fn cluster(&self, js_points: js_sys::Array) -> js_sys::Array {
-        use wasm_bindgen::JsCast;
-        // Convert from JS.
-        let mut points = Vec::<JsValue>::new();
-        js_points.for_each(&mut |obj, _idx, _arr| points.push(obj));
-        // Run the algorithm.
+    pub fn cluster(&self, js_points: JsValue) -> JsValue {
+        let points: Vec<JsPoint> = js_points.into_serde().unwrap();
         let clusters = self.fuzzy_dbscan(&points);
-        // Convert to JS.
-        let js_clusters = Array::new();
-        for cluster in clusters.iter() {
-            let js_cluster = Array::new();
-            for assignment in cluster.iter() {
-                let js_assignment = (*assignment).clone().into();
-                js_cluster.push(&js_assignment);
-            }
-            js_clusters.push(&js_cluster);
-        }
-        js_clusters
+        JsValue::from_serde(&clusters).unwrap()
     }
 }
 
