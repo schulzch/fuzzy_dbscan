@@ -18,7 +18,7 @@ See [documentation](https://docs.rs/fuzzy_dbscan) for an example.
 
 Compile the crate to WASM using `wasm-pack build --target=nodejs` (or `--target=browser`), then run it using:
 ```js
-var FuzzyDBSCAN = require('../pkg/fuzzy_dbscan.js');
+var FuzzyDBSCAN = require('fuzzy_dbscan.js'); // only for Node.js
 
 var fuzzyDBSCAN = new FuzzyDBSCAN.FuzzyDBSCAN();
 fuzzyDBSCAN.eps_min = 10.0;
