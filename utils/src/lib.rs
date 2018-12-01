@@ -5,7 +5,7 @@ extern crate svg;
 use fuzzy_dbscan::{Category, Cluster, MetricSpace};
 use rand::distributions::{Distribution, Normal};
 use rand::{SeedableRng, StdRng};
-use std::f32;
+use std::f64;
 use svg::node::element::{Circle, Definitions, RadialGradient, Stop, Title};
 use svg::node::Text;
 use svg::Document;
@@ -18,12 +18,12 @@ macro_rules! flat_vec {
 
 #[derive(Clone)]
 pub struct Point {
-    x: f32,
-    y: f32,
+    x: f64,
+    y: f64,
 }
 
 impl MetricSpace for Point {
-    fn distance(&self, other: &Self) -> f32 {
+    fn distance(&self, other: &Self) -> f64 {
         ((other.x - self.x).powi(2) + (other.y - self.y).powi(2)).sqrt()
     }
 }
@@ -34,7 +34,7 @@ fn seeded_rng() -> StdRng {
     SeedableRng::from_seed(seed)
 }
 
-pub fn gaussian_circle(n: usize, cx: f32, cy: f32, r: f32) -> Vec<Point> {
+pub fn gaussian_circle(n: usize, cx: f64, cy: f64, r: f64) -> Vec<Point> {
     let center = Point { x: cx, y: cy };
     let sigma = r / 3.0;
     let normal_x = Normal::new(cx as f64, sigma as f64);
@@ -44,8 +44,8 @@ pub fn gaussian_circle(n: usize, cx: f32, cy: f32, r: f32) -> Vec<Point> {
     let mut c = 0;
     while c < n {
         let sample = Point {
-            x: normal_x.sample(&mut random) as f32,
-            y: normal_y.sample(&mut random) as f32,
+            x: normal_x.sample(&mut random) as f64,
+            y: normal_y.sample(&mut random) as f64,
         };
         if center.distance(&sample) <= r {
             points.push(sample);
@@ -57,7 +57,7 @@ pub fn gaussian_circle(n: usize, cx: f32, cy: f32, r: f32) -> Vec<Point> {
 
 pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
     let (min_x, min_y, max_x, max_y) = points.iter().cloned().fold(
-        (f32::MAX, f32::MAX, f32::MIN, f32::MIN),
+        (f64::MAX, f64::MAX, f64::MIN, f64::MIN),
         |extrema, point| {
             (
                 extrema.0.min(point.x),
@@ -92,9 +92,9 @@ pub fn dump_svg(name: &str, points: &[Point], clusters: &[Cluster]) {
     ];
     let mut defs = Definitions::new();
     for (color_index, color) in colors.iter().enumerate() {
-        let stop = |x: f32| {
+        let stop = |x: f64| {
             // Guassian apodization function for more pleasant perception.
-            let apo = |x: f32| (-x.powi(2) / (2.0 * (1.0 / 3.0_f32).powi(2))).exp();
+            let apo = |x: f64| (-x.powi(2) / (2.0 * (1.0 / 3.0_f64).powi(2))).exp();
             Stop::new()
                 .set("offset", format!("{}%", (x * 100.0).round()))
                 .set("stop-opacity", apo(x))

@@ -28,7 +28,7 @@ macro_rules! assert_any {
 }
 
 const BASE_N: usize = 400;
-const BASE_R: f32 = 10.0;
+const BASE_R: f64 = 10.0;
 
 fn unimodal_gaussian() -> Vec<Point> {
     flat_vec![gaussian_circle(BASE_N, 0.0, 0.0, BASE_R)]
@@ -72,7 +72,7 @@ fn reduce_to_fuzzy_core_dbscan() {
         eps_min: BASE_R,
         eps_max: BASE_R,
         pts_min: 1.0,
-        pts_max: BASE_N as f32,
+        pts_max: BASE_N as f64,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
     dump_svg("reduce_to_fuzzy_core_dbscan", &points, &clusters);
@@ -96,8 +96,8 @@ fn reduce_to_fuzzy_border_dbscan() {
     let fuzzy_dbscan = FuzzyDBSCAN {
         eps_min: 1.0,
         eps_max: BASE_R,
-        pts_min: (BASE_N / 2) as f32,
-        pts_max: (BASE_N / 2) as f32,
+        pts_min: (BASE_N / 2) as f64,
+        pts_max: (BASE_N / 2) as f64,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
     dump_svg("reduce_to_fuzzy_border_dbscan", &points, &clusters);
@@ -120,8 +120,8 @@ fn full_fuzzy_dbscan() {
     let fuzzy_dbscan = FuzzyDBSCAN {
         eps_min: BASE_R / 3.0,
         eps_max: BASE_R / 3.0 * 2.0,
-        pts_min: (BASE_N / 2) as f32 * 0.68,
-        pts_max: (BASE_N / 2) as f32 * 0.95,
+        pts_min: (BASE_N / 2) as f64 * 0.68,
+        pts_max: (BASE_N / 2) as f64 * 0.95,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
     dump_svg("full_fuzzy_dbscan", &points, &clusters);
@@ -146,8 +146,8 @@ fn noise() {
     let fuzzy_dbscan = FuzzyDBSCAN {
         eps_min: BASE_R * 2.0,
         eps_max: BASE_R * 4.0,
-        pts_min: BASE_N as f32 * 2.0,
-        pts_max: BASE_N as f32 * 4.0,
+        pts_min: BASE_N as f64 * 2.0,
+        pts_max: BASE_N as f64 * 4.0,
     };
     let clusters = fuzzy_dbscan.cluster(&points);
     dump_svg("noise", &points, &clusters);

@@ -78,7 +78,7 @@ impl MetricSpace for JsPoint {
 }
 
 /// A high-level classification, as defined by the FuzzyDBSCAN algorithm.
-#[derive(PartialEq, Serialize)]
+#[derive(Debug, PartialEq, Serialize)]
 pub enum Category {
     Core,
     Border,
@@ -86,7 +86,7 @@ pub enum Category {
 }
 
 /// An element of a [cluster](Cluster).
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Assignment {
     /// The point index.
     pub index: usize,
