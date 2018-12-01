@@ -7,12 +7,12 @@
 //!
 //! #[derive(Debug)]
 //! struct Point {
-//!     x: f32,
-//!     y: f32,
+//!     x: f64,
+//!     y: f64,
 //! }
 //!
 //! impl fuzzy_dbscan::MetricSpace for Point {
-//!     fn distance(&self, other: &Self) -> f32 {
+//!     fn distance(&self, other: &Self) -> f64 {
 //!         ((other.x - self.x).powi(2) + (other.y - self.y).powi(2)).sqrt()
 //!     }
 //! }
@@ -42,7 +42,7 @@ extern crate serde_derive;
 use wasm_bindgen::prelude::*;
 
 use std::collections::HashSet;
-use std::f32;
+use std::f64;
 
 fn take_arbitrary(set: &mut HashSet<usize>) -> Option<usize> {
     let value_copy = if let Some(value) = set.iter().next() {
@@ -60,7 +60,7 @@ fn take_arbitrary(set: &mut HashSet<usize>) -> Option<usize> {
 /// A trait to compute distances between points.
 pub trait MetricSpace: Sized {
     /// Returns the distance between `self` and `other`.
-    fn distance(&self, other: &Self) -> f32;
+    fn distance(&self, other: &Self) -> f64;
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -72,8 +72,8 @@ pub struct JsPoint {
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 impl MetricSpace for JsPoint {
-    fn distance(&self, other: &Self) -> f32 {
-        ((other.x - self.x).powi(2) + (other.y - self.y).powi(2)).sqrt() as f32
+    fn distance(&self, other: &Self) -> f64 {
+        ((other.x - self.x).powi(2) + (other.y - self.y).powi(2)).sqrt() as f64
     }
 }
 
@@ -91,7 +91,7 @@ pub struct Assignment {
     /// The point index.
     pub index: usize,
     /// A (soft) label between `0.0` and `1.0`.
-    pub label: f32,
+    pub label: f64,
     /// A high-level category.
     pub category: Category,
 }
@@ -105,13 +105,13 @@ pub type Cluster = Vec<Assignment>;
 #[wasm_bindgen]
 pub struct FuzzyDBSCAN {
     /// The minimum fuzzy local neighborhood radius.
-    pub eps_min: f32,
+    pub eps_min: f64,
     /// The maximum fuzzy local neighborhood radius.
-    pub eps_max: f32,
+    pub eps_max: f64,
     /// The minimum fuzzy neighborhood density (number of points).
-    pub pts_min: f32,
+    pub pts_min: f64,
     /// The maximum fuzzy neighborhood density (number of points).
-    pub pts_max: f32,
+    pub pts_max: f64,
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -121,10 +121,10 @@ impl FuzzyDBSCAN {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         FuzzyDBSCAN {
-            eps_min: f32::NAN,
-            eps_max: f32::NAN,
-            pts_min: f32::NAN,
-            pts_max: f32::NAN,
+            eps_min: f64::NAN,
+            eps_max: f64::NAN,
+            pts_min: f64::NAN,
+            pts_max: f64::NAN,
         }
     }
 
@@ -180,7 +180,7 @@ impl FuzzyDBSCAN {
 
     fn expand_cluster_fuzzy<P: MetricSpace>(
         &self,
-        point_label: f32,
+        point_label: f64,
         point_index: usize,
         mut neighbor_indices: HashSet<usize>,
         points: &[P],
@@ -214,7 +214,7 @@ impl FuzzyDBSCAN {
                 border_points.push(Assignment {
                     index: neighbor_index,
                     category: Category::Border,
-                    label: f32::MAX,
+                    label: f64::MAX,
                 });
             }
         }
@@ -248,13 +248,13 @@ impl FuzzyDBSCAN {
         point_index: usize,
         neighbor_indices: &HashSet<usize>,
         points: &[P],
-    ) -> f32 {
+    ) -> f64 {
         1.0 + neighbor_indices.iter().fold(0.0, |sum, &neighbor_index| {
             sum + self.mu_distance(&points[point_index], &points[neighbor_index])
         })
     }
 
-    fn mu_min_p(&self, n: f32) -> f32 {
+    fn mu_min_p(&self, n: f64) -> f64 {
         if n >= self.pts_max {
             1.0
         } else if n < self.pts_min {
@@ -264,7 +264,7 @@ impl FuzzyDBSCAN {
         }
     }
 
-    fn mu_distance<P: MetricSpace>(&self, a: &P, b: &P) -> f32 {
+    fn mu_distance<P: MetricSpace>(&self, a: &P, b: &P) -> f64 {
         let distance = a.distance(b);
         if distance <= self.eps_min {
             1.0
