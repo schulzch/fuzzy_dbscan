@@ -1,7 +1,8 @@
 [package]
 name = "utils"
-version = "0.1.0"
+version = "0.0.0"
 authors = ["Christoph Schulz <schulzcbs@gmail.com>"]
+publish = false
 
 [dependencies]
 fuzzy_dbscan = { path = ".." }

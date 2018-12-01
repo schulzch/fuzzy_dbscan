@@ -1,3 +1,6 @@
+[workspace]
+members = ["utils"]
+
 [package]
 name = "fuzzy_dbscan"
 version = "0.3.0"
