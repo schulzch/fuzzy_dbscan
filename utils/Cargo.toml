@@ -1,8 +1,12 @@
 [package]
 name = "utils"
+edition = "2018"
 version = "0.0.0"
 authors = ["Christoph Schulz <schulzcbs@gmail.com>"]
-publish = false
+license = "Apache-2.0"
+description = """
+Common utilities for testing.
+"""
 
 [dependencies]
 fuzzy_dbscan = { path = ".." }

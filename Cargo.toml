@@ -1,11 +1,8 @@
-[workspace]
-members = ["utils"]
-
 [package]
 name = "fuzzy_dbscan"
+edition = "2018"
 version = "0.3.0"
 authors = ["Christoph Schulz <schulzcbs@gmail.com>"]
-description = "An implementation of the FuzzyDBSCAN algorithm"
 homepage = "https://github.com/schulzch/fuzzy_dbscan"
 repository = "https://github.com/schulzch/fuzzy_dbscan"
 readme = "README.md"
@@ -18,7 +15,12 @@ keywords = [
 ]
 categories = ["algorithms"]
 license = "Apache-2.0"
-edition = "2018"
+description = """
+An implementation of the FuzzyDBSCAN algorithm
+"""
+
+[workspace]
+members = ["utils"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -32,7 +34,7 @@ version = "0.2.28"
 features = ["serde-serialize"]
 
 [dev-dependencies]
-utils = { path = "utils" }
+utils = { version = "0.*", path = "utils" }
 criterion = "0.2"
 
 [[bench]]
