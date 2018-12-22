@@ -42,16 +42,17 @@ extern crate serde_derive;
 use wasm_bindgen::prelude::*;
 
 use std::collections::HashSet;
+use std::hash::Hash;
 use std::f64;
 
-fn take_arbitrary(set: &mut HashSet<usize>) -> Option<usize> {
-    let value_copy = if let Some(value) = set.iter().next() {
-        Some(*value)
+fn take_arbitrary<T: Hash + Eq + Copy>(set: &mut HashSet<T>) -> Option<T> {
+    let key_copy = if let Some(key_ref) = set.iter().next() {
+        Some(*key_ref)
     } else {
         None
     };
-    if let Some(value) = value_copy {
-        set.take(&value)
+    if let Some(key) = key_copy {
+        set.take(&key)
     } else {
         None
     }
