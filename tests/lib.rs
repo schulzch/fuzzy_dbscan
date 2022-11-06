@@ -151,6 +151,6 @@ fn noise() {
     };
     let clusters = fuzzy_dbscan.cluster(&points);
     dump_svg("noise", &points, &clusters);
-    assert_eq!(clusters.len(), 1);;
+    assert_eq!(clusters.len(), 1);
     assert_any!(clusters, |ref a| a.category != Category::Noise, false);
 }

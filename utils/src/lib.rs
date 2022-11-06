@@ -3,8 +3,9 @@ extern crate rand;
 extern crate svg;
 
 use fuzzy_dbscan::{Category, Cluster, MetricSpace};
-use rand::distributions::{Distribution, Normal};
-use rand::{SeedableRng, StdRng};
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+use rand_distr::{Distribution, Normal};
 use std::f64;
 use svg::node::element::{Circle, Definitions, RadialGradient, Stop, Title};
 use svg::node::Text;
@@ -28,18 +29,12 @@ impl MetricSpace for Point {
     }
 }
 
-fn seeded_rng() -> StdRng {
-    let mut seed = [0u8; 32];
-    seed.copy_from_slice((0..32).map(|i| i + 1).collect::<Vec<u8>>().as_slice());
-    SeedableRng::from_seed(seed)
-}
-
 pub fn gaussian_circle(n: usize, cx: f64, cy: f64, r: f64) -> Vec<Point> {
     let center = Point { x: cx, y: cy };
     let sigma = r / 3.0;
-    let normal_x = Normal::new(cx as f64, sigma as f64);
-    let normal_y = Normal::new(cy as f64, sigma as f64);
-    let mut random = seeded_rng();
+    let normal_x = Normal::new(cx as f64, sigma as f64).unwrap();
+    let normal_y = Normal::new(cy as f64, sigma as f64).unwrap();
+    let mut random: _ = StdRng::seed_from_u64(1337);
     let mut points = Vec::new();
     let mut c = 0;
     while c < n {

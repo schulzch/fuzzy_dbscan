@@ -1,6 +1,6 @@
 [package]
 name = "fuzzy_dbscan"
-edition = "2018"
+edition = "2021"
 version = "0.3.0"
 authors = ["Christoph Schulz <schulzcbs@gmail.com>"]
 homepage = "https://github.com/schulzch/fuzzy_dbscan"
@@ -26,16 +26,16 @@ members = ["utils"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-serde = "^1.0.59"
-serde_derive = "^1.0.59"
+serde = "^1.0.147"
+serde_derive = "^1.0.147"
 
 [dependencies.wasm-bindgen]
-version = "0.2.28"
+version = "0.2.83"
 features = ["serde-serialize"]
 
 [dev-dependencies]
 utils = { version = "0.*", path = "utils" }
-criterion = "0.2"
+criterion = "0.4"
 
 [[bench]]
 name = "lib"

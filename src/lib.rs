@@ -42,16 +42,11 @@ extern crate serde_derive;
 use wasm_bindgen::prelude::*;
 
 use std::collections::HashSet;
-use std::hash::Hash;
 use std::f64;
+use std::hash::Hash;
 
 fn take_arbitrary<T: Hash + Eq + Copy>(set: &mut HashSet<T>) -> Option<T> {
-    let key_copy = if let Some(key_ref) = set.iter().next() {
-        Some(*key_ref)
-    } else {
-        None
-    };
-    if let Some(key) = key_copy {
+    if let Some(key) = set.iter().next().copied() {
         set.take(&key)
     } else {
         None
@@ -79,7 +74,7 @@ impl MetricSpace for JsPoint {
 }
 
 /// A high-level classification, as defined by the FuzzyDBSCAN algorithm.
-#[derive(Debug, PartialEq, Serialize)]
+#[derive(Debug, PartialEq, Eq, Serialize)]
 pub enum Category {
     Core,
     Border,
@@ -240,7 +235,8 @@ impl FuzzyDBSCAN {
             .filter(|(neighbor_index, neighbor_point)| {
                 *neighbor_index != point_index
                     && neighbor_point.distance(&points[point_index]) <= self.eps_max
-            }).map(|(neighbor_index, _)| neighbor_index)
+            })
+            .map(|(neighbor_index, _)| neighbor_index)
             .collect() //TODO: would be neat to prevent this allocation.
     }
 

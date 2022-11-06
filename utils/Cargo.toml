@@ -1,6 +1,6 @@
 [package]
 name = "utils"
-edition = "2018"
+edition = "2021"
 version = "0.0.0"
 authors = ["Christoph Schulz <schulzcbs@gmail.com>"]
 license = "Apache-2.0"
@@ -10,5 +10,6 @@ Common utilities for testing.
 
 [dependencies]
 fuzzy_dbscan = { path = ".." }
-rand = "0.5"
-svg = "0.5"
+rand = "0.8.5"
+rand_distr = "0.4.3"
+svg = "0.12.1"
